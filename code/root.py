@@ -2,6 +2,7 @@ from impostazioni import SettingsUI
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.widgets import Combobox
+from ttkbootstrap.widgets import Checkbutton
 from ttkbootstrap.widgets import Label
 import json
 
@@ -11,6 +12,9 @@ class UI():
         self.settingsUi = SettingsUI(self.root)
         self.aziende = ["Azienda Uno", "Azienda Due", "Azienda Tre", "Azienda Quattro", "Azienda Cinque"]
         self.articoli = ["Lenzuola", "CopriMaterasso", "Federa"]
+        self.listButtons = []
+        self.cbVars = []
+        self.selAll = None
 
     def saveAziende(id, azienda):
         # DA MODIFICARE NO MAPPA MA LISTA
@@ -29,7 +33,7 @@ class UI():
         except Exception as e:
             print(f'Errore during the JSON update: {e}')
 
-    def loadAziende():
+    def loadAziende(self):
         try:
             with open('aziende.json', 'r') as file:
                 return json.load(file)
@@ -43,6 +47,7 @@ class UI():
         self.root.geometry("1100x500")
         self.root.resizable(False, False)
         self.comboList = []
+        self.selAll = ttk.BooleanVar(value=False)
 
         
         toolbar = ttk.Frame(self.root, bootstyle="secondary")
@@ -56,6 +61,9 @@ class UI():
 
         settingsBtn = ttk.Button(toolbar, text="Impostazioni", bootstyle=INFO,command= self.settingsUi.BuildUi)
         settingsBtn.pack(side=ttk.LEFT, padx=20, pady=5)
+
+        selSelectedBuche = Checkbutton(toolbar, variable= self.selAll, bootstyle = "secondary", command = lambda: self.selAllFun())
+        selSelectedBuche.pack(side=ttk.LEFT, padx = 20, pady = 5)
 
 
         def creaBuche():
@@ -86,6 +94,16 @@ class UI():
                 comboB.set(self.articoli[0])
                 comboB.place(x = 60, y = 70, height=30, width=130)
 
+                #saveBucaBtn = ttk.Button(frame, text= "Save", bootstyle = SUCCESS, command = lambda: print(self.listButtons))
+                #aveBucaBtn.place(x = 60, y = 100)
+
+                #self.listButtons.append(saveBucaBtn)
+                var = ttk.BooleanVar(value=False)
+                checkBtn = Checkbutton(frame, variable = var)
+                checkBtn.place(x = 100, y = 150)
+
+                self.cbVars.append(var)
+                print(self.cbVars)
                 self.comboList.append(comboB) # <------------ SERVIRA PER CREARE FUNZIONE SELEZIONA UN'UNICA AZIENDA PER TUTTE BUCHE
 
                 count = 0   #***************************QUESTO COUNT PER IL MOMENTO è SOLO UN PLACEHOLDER <------------
@@ -94,6 +112,12 @@ class UI():
                 countLbl.place(x = 80, y = 120)
 
         creaBuche()
+
+    def selAllFun(self):
+        for i, var in enumerate(self.cbVars):
+            if var.get():  # Se il Checkbutton è selezionato
+                print(i)  
+
 if __name__ == '__main__':
     app = UI()
     app.BuildUi()
