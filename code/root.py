@@ -10,11 +10,13 @@ class UI():
     def __init__(self):
         self.root = None
         self.settingsUi = SettingsUI(self.root)
-        self.aziende = ["Azienda Uno", "Azienda Due", "Azienda Tre", "Azienda Quattro", "Azienda Cinque"]
+        self.aziendeMap = self.loadAziende()
+        self.aziende = list(self.aziendeMap.values())
         self.articoli = ["Lenzuola", "CopriMaterasso", "Federa"]
         self.listButtons = []
         self.cbVars = []
         self.selAll = None
+        self.aziendaCB = None
 
     def saveAziende(id, azienda):
         # DA MODIFICARE NO MAPPA MA LISTA
@@ -65,6 +67,12 @@ class UI():
         selSelectedBuche = Checkbutton(toolbar, variable= self.selAll, bootstyle = "secondary", command = lambda: self.selAllFun())
         selSelectedBuche.pack(side=ttk.LEFT, padx = 20, pady = 5)
 
+        self.aziendaCB = Combobox(toolbar, values = self.aziende, bootstyle = "info", state = "readonly")
+        #self.aziendaCB.bind("<Primary-click>", lambda: self.selAllFun())
+        self.aziendaCB.set(self.aziende[0])
+        self.aziendaCB.pack(side = LEFT, padx = 20, pady= 5)
+
+
 
         def creaBuche():
             for i in range(10):
@@ -99,12 +107,12 @@ class UI():
 
                 #self.listButtons.append(saveBucaBtn)
                 var = ttk.BooleanVar(value=False)
-                checkBtn = Checkbutton(frame, variable = var)
+                checkBtn = Checkbutton(frame, variable = var, command=lambda v=var, cb=aziendaCB: self.disableCB(v, cb))
                 checkBtn.place(x = 100, y = 150)
 
                 self.cbVars.append(var)
                 print(self.cbVars)
-                self.comboList.append(comboB) # <------------ SERVIRA PER CREARE FUNZIONE SELEZIONA UN'UNICA AZIENDA PER TUTTE BUCHE
+                self.comboList.append(aziendaCB)
 
                 count = 0   #***************************QUESTO COUNT PER IL MOMENTO è SOLO UN PLACEHOLDER <------------
 
@@ -114,9 +122,17 @@ class UI():
         creaBuche()
 
     def selAllFun(self):
-        for i, var in enumerate(self.cbVars):
-            if var.get():  # Se il Checkbutton è selezionato
-                print(i)  
+        if self.selAll.get():
+            for i, var in enumerate(self.cbVars):
+                if var.get():  # Se il Checkbutton è selezionato
+                    self.comboList[i].set(self.aziendaCB.get()) 
+
+    def disableCB(self, var, combobox):
+        if var.get():   # Se la checkbox è selezionata
+            combobox.config(state="disabled")
+        else:           # Se la checkbox è deselezionata
+            combobox.config(state="readonly")
+            
 
 if __name__ == '__main__':
     app = UI()
