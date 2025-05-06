@@ -44,7 +44,7 @@ class UI():
 
 
     def BuildUi(self):
-        self.root = ttk.Window(themename="superhero")
+        self.root = ttk.Window(themename="darkly")
         self.root.title("Smistatore")
         self.root.geometry("1100x500")
         self.root.resizable(False, False)
@@ -64,14 +64,17 @@ class UI():
         settingsBtn = ttk.Button(toolbar, text="Impostazioni", bootstyle=INFO,command= self.settingsUi.BuildUi)
         settingsBtn.pack(side=ttk.LEFT, padx=20, pady=5)
 
-        selSelectedBuche = Checkbutton(toolbar, variable= self.selAll, bootstyle = "secondary", command = lambda: self.selAllFun())
-        selSelectedBuche.pack(side=ttk.LEFT, padx = 20, pady = 5)
+        # selSelectedBuche = Checkbutton(toolbar, variable= self.selAll, bootstyle = "secondary", command = lambda: self.selAllFun())
+        # selSelectedBuche.pack(side=ttk.LEFT, padx = 20, pady = 5)
 
         self.aziendaCB = Combobox(toolbar, values = self.aziende, bootstyle = "info", state = "readonly")
-        #self.aziendaCB.bind("<Primary-click>", lambda: self.selAllFun())
         self.aziendaCB.set(self.aziende[0])
         self.aziendaCB.pack(side = LEFT, padx = 20, pady= 5)
 
+        style = ttk.Style()
+        style.configure("Custom.TFrame", background="#2d2d2d")
+        style.configure("title.TLabel", background = "#2d2d2d" ,foreground="orange")
+        style.configure("lbl.TLabel", background = "#2d2d2d" ,foreground="white")
 
 
         def creaBuche():
@@ -80,43 +83,25 @@ class UI():
                 riga = i // 5
                 x = (200 * colonna) + (10*colonna)
                 y = 50 + (riga * 200) + (20 * riga)
-                frame = ttk.Frame(self.root, bootstyle="dark", borderwidth=2, relief="solid")
+                frame = ttk.Frame(self.root, style="Custom.TFrame", borderwidth=2, relief="solid")
                 frame.place(x=x, y=y, width=200, height=200)
                 
                 nList = ["Uno", "Due", "Tre", "Quattro", "Cinque", "Sei", "Sette", "Otto", "Nove", "Dieci"]
                 n = nList[i]
 
-                bucaLbl = Label(frame, text = f"Buca {n}", bootstyle = "dark", foreground="orange") #<----------- METTERE FONT ARIAL E BOLD
+                bucaLbl = ttk.Label(frame, text = f"Buca {n}", style = "title.TLabel") #<----------- METTERE FONT ARIAL E BOLD
                 bucaLbl.place(x = 5, y = 5)
 
-                aziendaLbl = Label(frame, text = "Azienda: ", bootstyle = "dark", foreground="white")
-                aziendaLbl.place(x = 5, y = 45)
-                aziendaCB = Combobox(frame, values = self.aziende, bootstyle = "info", state = "readonly")
-                aziendaCB.set(self.aziende[0])
-                aziendaCB.place(x = 60, y = 40, height= 30, width=130)
+                articoliLbl = Label(frame, text = "Articolo: ", style = "lbl.TLabel")
+                articoliLbl.place(x = 5, y = 45)
 
-                articoliLbl = Label(frame, text = "Articolo: ", bootstyle = "dark", foreground= "white")
-                articoliLbl.place(x = 5, y = 75)
-
-                comboB = Combobox(frame, values= self.articoli, bootstyle="info", state="readonly")
+                comboB = Combobox(frame, values= self.articoli, style ="info", state="readonly")
                 comboB.set(self.articoli[0])
-                comboB.place(x = 60, y = 70, height=30, width=130)
-
-                #saveBucaBtn = ttk.Button(frame, text= "Save", bootstyle = SUCCESS, command = lambda: print(self.listButtons))
-                #aveBucaBtn.place(x = 60, y = 100)
-
-                #self.listButtons.append(saveBucaBtn)
-                var = ttk.BooleanVar(value=False)
-                checkBtn = Checkbutton(frame, variable = var, command=lambda v=var, cb=aziendaCB: self.disableCB(v, cb))
-                checkBtn.place(x = 100, y = 150)
-
-                self.cbVars.append(var)
-                print(self.cbVars)
-                self.comboList.append(aziendaCB)
+                comboB.place(x = 60, y = 40, height=30, width=130)
 
                 count = 0   #***************************QUESTO COUNT PER IL MOMENTO è SOLO UN PLACEHOLDER <------------
 
-                countLbl = Label(frame, text = f"Count: {count}", bootstyle = "dark", foreground = "white")
+                countLbl = Label(frame, text = f"Count: {count}", style = "lbl.TLabel")
                 countLbl.place(x = 80, y = 120)
 
         creaBuche()
