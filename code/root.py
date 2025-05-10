@@ -5,42 +5,37 @@ from ttkbootstrap.widgets import Combobox
 from ttkbootstrap.widgets import Checkbutton
 from ttkbootstrap.widgets import Label
 import json
+import sqlite3
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from datetime import datetime
+
 
 class UI():
     def __init__(self):
         self.root = None
-        self.settingsUi = SettingsUI(self.root)
-        self.aziendeMap = self.loadAziende()
-        self.aziende = list(self.aziendeMap.values())
+        self.settingsUi = SettingsUI(self.root, self.aggiornaAziende)
+        self.aziende = self.loadAziende()
         self.articoli = ["Lenzuola", "CopriMaterasso", "Federa"]
         self.listButtons = []
         self.cbVars = []
         self.selAll = None
         self.aziendaCB = None
-
-    def saveAziende(id, azienda):
-        # DA MODIFICARE NO MAPPA MA LISTA
-        try:
-            try:
-                with open('aziende.json', 'r') as file:
-                    dati = json.load(file)
-            except (FileNotFoundError, json.JSONDecodeError):
-                dati = {}
-            
-            dati[id] = azienda
-            
-            with open('settings.json', 'w') as file:
-                json.dump(dati, file, indent = 4)
-                
-        except Exception as e:
-            print(f'Errore during the JSON update: {e}')
+        self.artCount = {}
+        self.artCombo = []
+        self.counts = []
 
     def loadAziende(self):
         try:
-            with open('aziende.json', 'r') as file:
-                return json.load(file)
-        except FileNotFoundError:
-            return {}
+            conn = sqlite3.connect('database.db')
+            cur = conn.cursor()
+            cur.execute("SELECT cliente FROM clienti ORDER BY id ASC")
+            risultati = cur.fetchall()
+            conn.close()
+            return [r[0] for r in risultati]
+        except Exception as e:
+            print(f"Errore durante il caricamento delle aziende: {e}")
+            return []
 
 
     def BuildUi(self):
@@ -58,14 +53,11 @@ class UI():
         newBtn = ttk.Button(toolbar, text="Nuovo", bootstyle=PRIMARY)
         newBtn.pack(side=ttk.LEFT, padx=20, pady=5)
 
-        saveBtn = ttk.Button(toolbar, text="Salva", bootstyle=SUCCESS)
+        saveBtn = ttk.Button(toolbar, text="Salva", bootstyle=SUCCESS, command = lambda: self.saveData())
         saveBtn.pack(side=ttk.LEFT, padx=20, pady=5)
 
         settingsBtn = ttk.Button(toolbar, text="Impostazioni", bootstyle=INFO,command= self.settingsUi.BuildUi)
         settingsBtn.pack(side=ttk.LEFT, padx=20, pady=5)
-
-        # selSelectedBuche = Checkbutton(toolbar, variable= self.selAll, bootstyle = "secondary", command = lambda: self.selAllFun())
-        # selSelectedBuche.pack(side=ttk.LEFT, padx = 20, pady = 5)
 
         self.aziendaCB = Combobox(toolbar, values = self.aziende, bootstyle = "info", state = "readonly")
         self.aziendaCB.set(self.aziende[0])
@@ -99,25 +91,99 @@ class UI():
                 comboB.set(self.articoli[0])
                 comboB.place(x = 60, y = 40, height=30, width=130)
 
-                count = 0   #***************************QUESTO COUNT PER IL MOMENTO è SOLO UN PLACEHOLDER <------------
+                count = 1 if i == 9 else i  #***************************QUESTO COUNT PER IL MOMENTO è SOLO UN PLACEHOLDER <------------
 
                 countLbl = Label(frame, text = f"Count: {count}", style = "lbl.TLabel")
                 countLbl.place(x = 80, y = 120)
 
+                self.artCombo.append(comboB)
+                self.counts.append(count)
+
         creaBuche()
 
-    def selAllFun(self):
-        if self.selAll.get():
-            for i, var in enumerate(self.cbVars):
-                if var.get():  # Se il Checkbutton è selezionato
-                    self.comboList[i].set(self.aziendaCB.get()) 
+    def saveData(self):
+        self.artCount = {}
+        for i in range(len(self.artCombo)):
+            articolo = self.artCombo[i]
+            if articolo.get() in self.artCount:
+                self.artCount[articolo.get()] += self.counts[i]
+            else:                  
+                self.artCount[articolo.get()] = self.counts[i]
 
-    def disableCB(self, var, combobox):
-        if var.get():   # Se la checkbox è selezionata
-            combobox.config(state="disabled")
-        else:           # Se la checkbox è deselezionata
-            combobox.config(state="readonly")
-            
+        print(self.artCount)
+
+        if self.aziendaCB.get():
+            cliente = self.aziendaCB.get()
+
+        conn = sqlite3.connect('database.db')
+        cur = conn.cursor()
+
+        cur.execute("DELETE FROM relazione")
+
+        cur.execute(f"SELECT id FROM clienti WHERE cliente = '{cliente}'")
+
+        result = cur.fetchone()
+        if result:
+            idCliente = result[0]
+
+        prodotti = {}
+        for prodotto in self.artCount:
+            if self.artCount[prodotto] != 0:
+                cur.execute(f"SELECT id FROM prodotti WHERE prodotto = '{prodotto}'")
+                result = cur.fetchone()
+                if result:
+                    idProd = result[0]
+                    prodotti[idProd] = self.artCount[prodotto]
+        
+        for idPr in prodotti:
+            cur.execute("INSERT INTO relazione (idCliente, idProdotto, Quantità) VALUES (?, ?, ?)", (idCliente, idPr, prodotti[idPr]))
+
+        conn.commit()
+
+        cur.execute("""
+            SELECT prodotti.prodotto, SUM(relazione.quantità)
+            FROM clienti
+            JOIN relazione ON relazione.idCliente = clienti.id
+            JOIN prodotti ON relazione.idProdotto = prodotti.id
+            WHERE clienti.cliente = ?
+            GROUP BY prodotti.prodotto;
+        """, (cliente,))
+        result = cur.fetchall()
+        artCliente = {prodotto: quantita for prodotto, quantita in result}
+        print(artCliente)
+
+        oggi = datetime.now()
+        data = f"{oggi.year}-{oggi.month}-{oggi.day}"
+
+        nomePDF = cliente + " " + data + ".pdf"
+        self.crea_pdf(nomePDF, cliente, artCliente)
+
+
+        cur.close()
+        conn.close()
+
+
+    def aggiornaAziende(self):
+        self.aziende = self.loadAziende()
+        self.aziendaCB['values'] = self.aziende
+        if self.aziende:
+            self.aziendaCB.set(self.aziende[0])
+
+    def crea_pdf(self, nome_file, cliente, articoli):
+        c = canvas.Canvas(nome_file, pagesize=A4)
+        larghezza, altezza = A4
+
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(100, altezza - 100, f"{cliente}")
+
+        c.setFont("Helvetica", 12)
+        y = altezza - 130
+        for nome, quantita in articoli.items():
+            c.drawString(100, y, f"{nome}: {quantita}")
+            y -= 20
+
+        c.save()
+
 
 if __name__ == '__main__':
     app = UI()

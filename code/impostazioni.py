@@ -6,38 +6,42 @@ from ttkbootstrap.widgets import Frame
 from ttkbootstrap.widgets import Label
 from ttkbootstrap.widgets import Button
 import tkinter.font as tkFont
-import json
-
+import sqlite3
 
 class SettingsUI():
-    def __init__(self, root):
+    def __init__(self, root, aggiornaAziende):
         self.root = root
+        self.aggiornaAziende = aggiornaAziende
         self.settingsWin = None
         self.aziende = self.loadAziende()
         self.mapWidg = {}
 
-    def saveAziende(self, id, azienda):
-        try:
-            try:
-                with open('aziende.json', 'r') as file:
-                    aziende = json.load(file)
-            except (FileNotFoundError, json.JSONDecodeError):
-                aziende = {}
-            
-            aziende[id] = azienda
-            
-            with open('aziende.json', 'w') as file:
-                json.dump(aziende, file, indent = 4)
-                
-        except Exception as e:
-            print(f'Errore during the JSON update: {e}')
+    def saveAziende(self, azienda):
+        conn = sqlite3.connect('database.db')
+        cur = conn.cursor()
+
+        cur.execute("SELECT COUNT(*) FROM clienti WHERE cliente = ?", (azienda,))
+        if cur.fetchone()[0] == 0:
+            cur.execute("INSERT INTO clienti (cliente) VALUES (?)", (azienda,))
+        else:
+            print("Cliente già esistente.")
+
+        conn.commit()
+
+        cur.close()
+        conn.close()
 
     def loadAziende(self):
         try:
-            with open('aziende.json', 'r') as file:
-                return json.load(file)
-        except FileNotFoundError:
-            return {}
+            conn = sqlite3.connect('database.db')
+            cur = conn.cursor()
+            cur.execute("SELECT cliente FROM clienti ORDER BY id ASC")
+            risultati = cur.fetchall()
+            conn.close()
+            return [r[0] for r in risultati]
+        except Exception as e:
+            print(f"Errore durante il caricamento delle aziende: {e}")
+            return []
 
 
     def BuildUi(self):
@@ -66,13 +70,13 @@ class SettingsUI():
         self.settWin = ttk.Frame(self.settingsWin)
         self.settWin.pack(fill="both")
 
-        label = ttk.Label(self.settWin, text="Nome Società:", font=("Helvetica", 12))
+        label = ttk.Label(self.settWin, text="Nome Cliente:", font=("Helvetica", 12))
         label.pack(pady=10)
 
         self.entry_nome = ttk.Entry(self.settWin, width=30)
         self.entry_nome.pack(pady=5)
 
-        save_button = ttk.Button(self.settWin, text="Aggiungi Società", bootstyle=SUCCESS, command= lambda: self.salvaSocieta())
+        save_button = ttk.Button(self.settWin, text="Aggiungi Cliente", bootstyle=SUCCESS, command= lambda: self.salvaSocieta())
         save_button.pack(pady=20)
 
         #************ LISTA AZIENDE WINDOW ************
@@ -80,7 +84,7 @@ class SettingsUI():
         self.listWin = ttk.Frame(self.settingsWin)
         self.listWin.pack(fill="both")
 
-        label = ttk.Label(self.listWin, text="AZIENDE:", font=("Helvetica", 12))
+        label = ttk.Label(self.listWin, text="CLIENTI:", font=("Helvetica", 12))
         label.pack(pady=10)
         
 
@@ -91,7 +95,7 @@ class SettingsUI():
             if isinstance(widget, Frame):  # elimina solo i Frame (che contengono Label e Button)
                 widget.destroy()
 
-        for azienda_id, nome in self.aziende.items():
+        for nome in self.aziende:
             frame = Frame(self.listWin, borderwidth=2, relief="solid")
             frame.pack(pady=0, padx=10, fill="both")
 
@@ -99,29 +103,34 @@ class SettingsUI():
             lbl.pack(side=ttk.LEFT, padx=50, pady=5)
 
             deleteBtn = Button(frame, text="Delete", bootstyle="danger",
-                            command=lambda id=azienda_id, f=frame: self.deleteAzienda(id, f))
+                            command=lambda cliente=nome, f=frame: self.deleteAzienda(cliente, f))
             deleteBtn.pack(side=ttk.RIGHT, pady=5)
 
             
 
-    def deleteAzienda(self, id, frame):
+    def deleteAzienda(self, cliente, frame):
         try:
-            with open('aziende.json', 'r') as file:
-                aziende = json.load(file)
+            conn = sqlite3.connect('database.db')
+            cur = conn.cursor()
 
-            if str(id) in aziende:
-                del aziende[str(id)]
+            cur.execute(f"SELECT id FROM clienti WHERE cliente = '{cliente}'")
 
-                with open('aziende.json', 'w') as file:
-                    json.dump(aziende, file, indent=4)
+            result = cur.fetchone()
+            if result:
+                idCliente = result[0]
 
-                frame.destroy()
+            cur.execute("DELETE FROM clienti WHERE id = ?", (idCliente,))
+            conn.commit()
 
-                self.aziende = aziende
+            cur.close()
+            conn.close()
 
-                print(f"Azienda con ID {id} eliminata.")
-            else:
-                print(f"Azienda con ID {id} non trovata.")
+            frame.destroy()
+
+            # Aggiorna self.aziende dopo l'eliminazione
+            self.aziende = self.loadAziende()
+
+            print(f"{cliente} eliminato.")
 
         except Exception as e:
             print(f"Errore durante l'eliminazione: {e}")
@@ -138,11 +147,9 @@ class SettingsUI():
 
     def salvaSocieta(self):
         nome_azienda = self.entry_nome.get()
-        mapAziende = self.loadAziende()
-        id = int(len(mapAziende) + 1)
         if nome_azienda:
-            self.saveAziende(id, nome_azienda)
-            self.entry_nome.delete(0, 'end') 
-            print(f"Azienda '{nome_azienda}' salvata con successo.")
+            self.saveAziende(nome_azienda)
+            self.entry_nome.delete(0, 'end')
+            self.aggiornaAziende()
         else:
             print("Inserisci un nome valido.")
