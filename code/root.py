@@ -1,4 +1,8 @@
 from impostazioni import SettingsUI
+
+import threading
+import RPi.GPIO as GPIO
+import time
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.widgets import Combobox
@@ -15,15 +19,22 @@ class UI():
     def __init__(self):
         self.root = None
         self.settingsUi = SettingsUI(self.root, self.aggiornaAziende)
+        #self.counterClass = SwitchCounter(self.modDict)
         self.aziende = self.loadAziende()
         self.articoli = ["Lenzuola", "CopriMaterasso", "Federa"]
-        self.listButtons = []
+        #self.listButtons = []
         self.cbVars = []
         self.selAll = None
         self.aziendaCB = None
         self.artCount = {}
         self.artCombo = []
         self.counts = []
+        self.counterDict = {}
+        self.lblCount = {}
+        self.pins = [17,18]
+        self.entrato = False
+        self.pin_map = {}  # pin → (label, index)
+
 
     def loadAziende(self):
         try:
@@ -50,7 +61,7 @@ class UI():
         toolbar = ttk.Frame(self.root, bootstyle="secondary")
         toolbar.pack(side=ttk.TOP, fill=ttk.X)
 
-        newBtn = ttk.Button(toolbar, text="Nuovo", bootstyle=PRIMARY)
+        newBtn = ttk.Button(toolbar, text="Nuovo", bootstyle=PRIMARY, command = lambda : self.threadCounter())
         newBtn.pack(side=ttk.LEFT, padx=20, pady=5)
 
         saveBtn = ttk.Button(toolbar, text="Salva", bootstyle=SUCCESS, command = lambda: self.saveData())
@@ -70,44 +81,100 @@ class UI():
 
 
         def creaBuche():
+            GPIO.setmode(GPIO.BCM)
+            nList = ["Uno", "Due", "Tre", "Quattro", "Cinque", "Sei", "Sette", "Otto", "Nove", "Dieci"]
+
             for i in range(10):
-                
-                
-                bucaId = i+1
-
-
+                id = i + 1
                 colonna = i % 5
                 riga = i // 5
-                x = (200 * colonna) + (10*colonna)
+                x = (200 * colonna) + (10 * colonna)
                 y = 50 + (riga * 200) + (20 * riga)
                 frame = ttk.Frame(self.root, style="Custom.TFrame", borderwidth=2, relief="solid")
                 frame.place(x=x, y=y, width=200, height=200)
-                
-                nList = ["Uno", "Due", "Tre", "Quattro", "Cinque", "Sei", "Sette", "Otto", "Nove", "Dieci"]
-                n = nList[i]
 
-                bucaLbl = ttk.Label(frame, text = f"Buca {n}", style = "title.TLabel") #<----------- METTERE FONT ARIAL E BOLD
-                bucaLbl.place(x = 5, y = 5)
+                bucaLbl = ttk.Label(frame, text=f"Buca {nList[i]}", style="title.TLabel")
+                bucaLbl.place(x=5, y=5)
 
-                articoliLbl = Label(frame, text = "Articolo: ", style = "lbl.TLabel")
-                articoliLbl.place(x = 5, y = 45)
+                articoliLbl = Label(frame, text="Articolo: ", style="lbl.TLabel")
+                articoliLbl.place(x=5, y=45)
 
-                comboB = Combobox(frame, values= self.articoli, style ="info", state="readonly")
+                comboB = Combobox(frame, values=self.articoli, style="info", state="readonly")
                 comboB.set(self.articoli[0])
-                comboB.place(x = 60, y = 40, height=30, width=130)
+                comboB.place(x=60, y=40, height=30, width=130)
 
-                count = 1 if i == 9 else i  #***************************QUESTO COUNT PER IL MOMENTO è SOLO UN PLACEHOLDER <------------
-
-                countLbl = Label(frame, text = f"Count: {count}", style = "lbl.TLabel")
-                countLbl.place(x = 80, y = 120)
+                count = 0
+                countLbl = Label(frame, text=f"Count: {count}", style="lbl.TLabel")
+                countLbl.place(x=80, y=120)
 
                 self.artCombo.append(comboB)
                 self.counts.append(count)
 
+                if i < len(self.pins):
+                    pin = self.pins[i]
+                    GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                    self.pin_map[pin] = (countLbl, i)
+
         creaBuche()
 
-    def associaCount(self):
-        pass
+    def threadCounter(self):
+        GPIO.setup(27, GPIO.OUT)
+        self.pwm = GPIO.PWM(27, 1000)
+        for pin in self.pin_map:
+            thread = threading.Thread(target=self.counter, args=(pin,), daemon=True)
+            thread.start()
+
+    
+
+    def suona_allarme(self):
+        try:
+            self.pwm.start(50)
+            time.sleep(5)
+            self.pwm.stop()
+        except Exception as e:
+            print("Errore nel suono:", e)
+
+    def counter(self, pin):
+        label, idx = self.pin_map[pin]
+        start_time = None
+        allarme_attivato = False
+        stato_prec = GPIO.HIGH
+
+        while True:
+            stato = GPIO.input(pin)
+
+            if stato == GPIO.LOW:
+                if stato_prec == GPIO.HIGH:
+                    # nuova attivazione
+                    start_time = time.time()
+                    allarme_attivato = False
+
+                elapsed = time.time() - start_time if start_time else 0
+
+                if elapsed > 3 and not allarme_attivato:
+                    allarme_attivato = True
+                    threading.Thread(target=self.suona_allarme, daemon=True).start()
+
+            elif stato == GPIO.HIGH and stato_prec == GPIO.LOW:
+                # rilascio: conta l'evento
+                self.counts[idx] += 1
+                count = self.counts[idx]
+                self.root.after(0, lambda l=label, c=count: l.config(text=f"Count: {c}"))
+
+                # reset
+                start_time = None
+                allarme_attivato = False
+
+            stato_prec = stato
+            time.sleep(0.01)
+
+
+
+    
+
+
+    def modDict(self, key, value):
+        self.counterDict[key] += value
 
     def saveData(self):
         self.artCount = {}
@@ -197,3 +264,6 @@ if __name__ == '__main__':
     app = UI()
     app.BuildUi()
     app.root.mainloop()    
+
+
+
