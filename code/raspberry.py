@@ -9,7 +9,7 @@ class SwitchCounter:
         Questa classe serve per gestire un contatore associato ad un sensore identificato da un ID e collegato a un pin GPIO.
 
         ### Args:
-        - sensor_id : str : identificativo del sensore (es. nome azienda o codice)
+        - sensor_id : str : identificativo del sensore (es. nome buca o codice)
         - pin : int : il numero del pin GPIO associato al sensore
         """
         self.sensor_id = sensor_id
@@ -40,11 +40,11 @@ class SwitchCounter:
             print(f"\nTerminato il conteggio per '{self.sensor_id}'")
 
  
-PIN_USED = [17, 18]  
+PIN_USED = [17]  
 
 sensors = []
 for idx, pin in enumerate(PIN_USED, start=1):
-    sensor = SwitchCounter(f"azienda_{idx}", pin)
+    sensor = SwitchCounter(f"Buca {idx}", pin)
     sensors.append(sensor)
 
 
