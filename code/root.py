@@ -71,6 +71,11 @@ class UI():
 
         def creaBuche():
             for i in range(10):
+                
+                
+                bucaId = i+1
+
+
                 colonna = i % 5
                 riga = i // 5
                 x = (200 * colonna) + (10*colonna)
@@ -100,6 +105,9 @@ class UI():
                 self.counts.append(count)
 
         creaBuche()
+
+    def associaCount(self):
+        pass
 
     def saveData(self):
         self.artCount = {}
