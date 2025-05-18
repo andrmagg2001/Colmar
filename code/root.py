@@ -32,7 +32,7 @@ class UI():
         self.counts = []
         self.counterDict = {}
         self.lblCount = {}
-        self.pins = [17,18]
+        self.pins = [17,18,2,22]
         self.entrato = False
         self.pin_map = {}  # pin → (label, index)
         self.frameList = []
@@ -76,7 +76,7 @@ class UI():
         toolbar = ttk.Frame(self.root, bootstyle="secondary")
         toolbar.pack(side=ttk.TOP, fill=ttk.X)
 
-        newBtn = ttk.Button(toolbar, text="Boot", bootstyle=PRIMARY, command = lambda : self.counter())
+        newBtn = ttk.Button(toolbar, text="Boot", bootstyle=PRIMARY, command = lambda : self.threadCounter())
         newBtn.pack(side=ttk.LEFT, padx=20, pady=5)
 
         saveBtn = ttk.Button(toolbar, text="Salva", bootstyle=SUCCESS, command = lambda: self.saveData())
@@ -163,25 +163,29 @@ class UI():
         label, idx = self.pin_map[pin]
         start_time = None
         allarme_attivato = False
-        stato_prec = GPIO.HIGH
+        stato_prec = GPIO.LOW
 
         while True:
              stato = GPIO.input(pin)
 
-             if stato == GPIO.LOW:
-                 if stato_prec == GPIO.HIGH:
+             if stato == GPIO.HIGH:
+                 if stato_prec == GPIO.LOW:
                      # nuova attivazione
+                     start_time = None
                      start_time = time.time()
                      allarme_attivato = False
 
-                 elapsed = time.time() - start_time if start_time else 0
+                 if start_time is not None:
+                    elapsed = time.time() - start_time
+                 else:
+                    elapsed = 0
 
                  if elapsed > 3 and not allarme_attivato:
                      allarme_attivato = True
                      self.sensBlocked(idx)
                      threading.Thread(target=self.suona_allarme, daemon=True).start()
 
-             elif stato == GPIO.HIGH and stato_prec == GPIO.LOW:
+             elif stato == GPIO.LOW and stato_prec == GPIO.HIGH:
                  # rilascio: conta l'evento
                  self.counts[idx] += 1
                  count = self.counts[idx]
