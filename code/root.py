@@ -23,7 +23,6 @@ class UI():
         #self.counterClass = SwitchCounter(self.modDict)
         self.aziende = self.loadAziende()
         self.articoli = self.loadProdotti()
-        #self.articoli = ["Lenzuola", "CopriMaterasso", "Federa"]
         self.listButtons = []
         self.cbVars = []
         self.selAll = None
