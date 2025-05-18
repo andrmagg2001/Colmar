@@ -1,7 +1,7 @@
 from impostazioni import SettingsUI
 
 import threading
-#import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 import time
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
@@ -23,8 +23,8 @@ class UI():
         #self.counterClass = SwitchCounter(self.modDict)
         self.aziende = self.loadAziende()
         self.articoli = self.loadProdotti()
-        #self.articoli = ["Lenzuola", "CopriMaterasso", "Federa"]
-        #self.listButtons = []
+        self.articoli = ["Lenzuola", "CopriMaterasso", "Federa"]
+        self.listButtons = []
         self.cbVars = []
         self.selAll = None
         self.aziendaCB = None
@@ -77,7 +77,7 @@ class UI():
         toolbar = ttk.Frame(self.root, bootstyle="secondary")
         toolbar.pack(side=ttk.TOP, fill=ttk.X)
 
-        newBtn = ttk.Button(toolbar, text="Boot", bootstyle=PRIMARY, command = lambda : self.sensBlocked(5))
+        newBtn = ttk.Button(toolbar, text="Boot", bootstyle=PRIMARY, command = lambda : self.counter())
         newBtn.pack(side=ttk.LEFT, padx=20, pady=5)
 
         saveBtn = ttk.Button(toolbar, text="Salva", bootstyle=SUCCESS, command = lambda: self.saveData())
@@ -101,7 +101,7 @@ class UI():
 
 
         def creaBuche():
-            #GPIO.setmode(GPIO.BCM)
+            GPIO.setmode(GPIO.BCM)
             nList = ["Uno", "Due", "Tre", "Quattro", "Cinque", "Sei", "Sette", "Otto", "Nove", "Dieci"]
 
             for i in range(10):
@@ -138,14 +138,14 @@ class UI():
 
                 if i < len(self.pins):
                     pin = self.pins[i]
-                    #GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                    GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
                     self.pin_map[pin] = (countLbl, i)
 
         creaBuche()
 
     def threadCounter(self):
-        #GPIO.setup(27, GPIO.OUT)
-        #self.pwm = GPIO.PWM(27, 1000)
+        GPIO.setup(27, GPIO.OUT)
+        self.pwm = GPIO.PWM(27, 1000)
         for pin in self.pin_map:
             thread = threading.Thread(target=self.counter, args=(pin,), daemon=True)
             thread.start()
@@ -164,35 +164,36 @@ class UI():
         label, idx = self.pin_map[pin]
         start_time = None
         allarme_attivato = False
-        #stato_prec = GPIO.HIGH
+        stato_prec = GPIO.HIGH
 
-        # while True:
-        #     #stato = GPIO.input(pin)
+        while True:
+             stato = GPIO.input(pin)
 
-        #     if stato == GPIO.LOW:
-        #         if stato_prec == GPIO.HIGH:
-        #             # nuova attivazione
-        #             start_time = time.time()
-        #             allarme_attivato = False
+             if stato == GPIO.LOW:
+                 if stato_prec == GPIO.HIGH:
+                     # nuova attivazione
+                     start_time = time.time()
+                     allarme_attivato = False
 
-        #         elapsed = time.time() - start_time if start_time else 0
+                 elapsed = time.time() - start_time if start_time else 0
 
-        #         if elapsed > 3 and not allarme_attivato:
-        #             allarme_attivato = True
-        #             threading.Thread(target=self.suona_allarme, daemon=True).start()
+                 if elapsed > 3 and not allarme_attivato:
+                     allarme_attivato = True
+                     self.sensBlocked(idx)
+                     threading.Thread(target=self.suona_allarme, daemon=True).start()
 
-        #     elif stato == GPIO.HIGH and stato_prec == GPIO.LOW:
-        #         # rilascio: conta l'evento
-        #         self.counts[idx] += 1
-        #         count = self.counts[idx]
-        #         self.root.after(0, lambda l=label, c=count: l.config(text=f"Count: {c}"))
+             elif stato == GPIO.HIGH and stato_prec == GPIO.LOW:
+                 # rilascio: conta l'evento
+                 self.counts[idx] += 1
+                 count = self.counts[idx]
+                 self.root.after(0, lambda l=label, c=count: l.config(text=f"Count: {c}"))
 
-        #         # reset
-        #         start_time = None
-        #         allarme_attivato = False
+                 # reset
+                 start_time = None
+                 allarme_attivato = False
 
-        #     stato_prec = stato
-        #     time.sleep(0.01)
+             stato_prec = stato
+             time.sleep(0.01)
 
 
     def stopBtnAction(self):
@@ -250,7 +251,7 @@ class UI():
         conn = sqlite3.connect('database.db')
         cur = conn.cursor()
 
-        cur.execute("DELETE FROM relazione")
+        #cur.execute("DELETE FROM relazione")
 
         cur.execute(f"SELECT id FROM clienti WHERE cliente = '{cliente}'")
 
