@@ -16,15 +16,22 @@ class SettingsUI():
         self.aziende = self.loadAziende()
         self.mapWidg = {}
 
-    def saveAziende(self, azienda):
+    def saveAziende(self, what, id):
         conn = sqlite3.connect('database.db')
         cur = conn.cursor()
 
-        cur.execute("SELECT COUNT(*) FROM clienti WHERE cliente = ?", (azienda,))
-        if cur.fetchone()[0] == 0:
-            cur.execute("INSERT INTO clienti (cliente) VALUES (?)", (azienda,))
-        else:
-            print("Cliente già esistente.")
+        if id == 'cliente':
+            cur.execute("SELECT COUNT(*) FROM clienti WHERE cliente = ?", (what,))
+            if cur.fetchone()[0] == 0:
+                cur.execute("INSERT INTO clienti (cliente) VALUES (?)", (what,))
+            else:
+                print("Cliente già esistente.")
+        elif id == 'prodotto':
+            cur.execute("SELECT COUNT(*) FROM prodotti WHERE prodotto = ?", (what,))
+            if cur.fetchone()[0] == 0:
+                cur.execute("INSERT INTO prodotti (prodotto) VALUES (?)", (what,))
+            else:
+                print("Prodotto già esistente.")
 
         conn.commit()
 
@@ -36,6 +43,18 @@ class SettingsUI():
             conn = sqlite3.connect('database.db')
             cur = conn.cursor()
             cur.execute("SELECT cliente FROM clienti ORDER BY id ASC")
+            risultati = cur.fetchall()
+            conn.close()
+            return [r[0] for r in risultati]
+        except Exception as e:
+            print(f"Errore durante il caricamento delle aziende: {e}")
+            return []
+        
+    def loadProdotti(self):
+        try:
+            conn = sqlite3.connect('database.db')
+            cur = conn.cursor()
+            cur.execute("SELECT prodotto FROM prodotti ORDER BY id ASC")
             risultati = cur.fetchall()
             conn.close()
             return [r[0] for r in risultati]
@@ -54,14 +73,16 @@ class SettingsUI():
         toolbar = ttk.Frame(self.settingsWin, bootstyle="secondary")
         toolbar.pack(side=ttk.TOP, fill=ttk.X)
 
-        settSec = ttk.Button(toolbar, text="Impostazioni", bootstyle=SUCCESS, command=lambda: self.changeFrame(self.settWin, settSec, listAzieSec))
+        settSec = ttk.Button(toolbar, text="Impostazioni", bootstyle=SUCCESS, command=lambda: self.changeFrame(self.settWin, settSec, listAzieSec, listProds))
         settSec.pack(side=ttk.LEFT, padx=0, pady=0)
 
-        listAzieSec = ttk.Button(toolbar, text="Lista Aziende", bootstyle="primary", command = lambda: self.changeFrame(self.listWin, listAzieSec, settSec))
+        listAzieSec = ttk.Button(toolbar, text="Lista Aziende", bootstyle="primary", command = lambda: self.changeFrame(self.listWin, listAzieSec, settSec, listProds))
         listAzieSec.pack(side=ttk.LEFT, padx=0, pady=0)
 
-        # selSelectedBuche = Checkbutton(toolbar, variable= self.selAll, bootstyle = "secondary", command = lambda: self.selAllFun())
-        # selSelectedBuche.pack(side=ttk.LEFT, padx = 20, pady = 5)
+        listProds = ttk.Button(toolbar, text="Lista Prodotti", bootstyle="primary", command = lambda: self.changeFrame(self.prodWin, listProds,listAzieSec, settSec))
+        listProds.pack(side=ttk.LEFT, padx=0, pady=0)
+
+
 
 
 
@@ -76,20 +97,58 @@ class SettingsUI():
         self.entry_nome = ttk.Entry(self.settWin, width=30)
         self.entry_nome.pack(pady=5)
 
-        save_button = ttk.Button(self.settWin, text="Aggiungi Cliente", bootstyle=SUCCESS, command= lambda: self.salvaSocieta())
+        save_button = ttk.Button(self.settWin, text="Aggiungi Cliente", bootstyle=SUCCESS, command= lambda: self.salvaSocieta('cliente'))
         save_button.pack(pady=20)
+
+
+        prodLbl = ttk.Label(self.settWin, text="Nome Prodotto:", font=("Helvetica", 12))
+        prodLbl.pack(pady=10)
+
+        self.entryProd = ttk.Entry(self.settWin, width=30)
+        self.entryProd.pack(pady=5)
+
+        saveProdbutton = ttk.Button(self.settWin, text="Aggiungi Prodotto", bootstyle=SUCCESS, command= lambda: self.salvaSocieta('prodotto'))
+        saveProdbutton.pack(pady=20)
+
 
         #************ LISTA AZIENDE WINDOW ************
 
         self.listWin = ttk.Frame(self.settingsWin)
         self.listWin.pack(fill="both")
 
-        label = ttk.Label(self.listWin, text="CLIENTI:", font=("Helvetica", 12))
-        label.pack(pady=10)
+        self.clientiLbl = ttk.Label(self.listWin, text="CLIENTI:", font=("Helvetica", 12))
+
+        #*********** LISTA PRODOTTI WINDOW *************+
         
+        self.prodWin = ttk.Frame(self.settingsWin)
+        self.prodWin.pack(fill="both")
+
+        self.articoliLbl = ttk.Label(self.prodWin, text="Articoli:", font=("Helvetica", 12))
+        
+        
+    def popolaArt(self):
+        self.prodotti = self.loadProdotti()
+        self.articoliLbl.pack(pady=10)
+        for widget in self.prodWin.winfo_children():
+            if isinstance(widget, Frame):  # elimina solo i Frame (che contengono Label e Button)
+                widget.destroy()
+
+        for nome in self.prodotti:
+            frame = Frame(self.prodWin, borderwidth=2, relief="solid")
+            frame.pack(pady=0, padx=10, fill="both")
+
+            lbl = Label(frame, text=nome, font=self.arial)
+            lbl.pack(side=ttk.LEFT, padx=50, pady=5)
+
+            deleteBtn = Button(frame, text="Delete", bootstyle="danger",
+                            command=lambda articolo=nome, f=frame: self.deleteProd(articolo, f))
+            deleteBtn.pack(side=ttk.RIGHT, pady=5)
+
 
 
     def popolaLista(self):
+        self.aziende = self.loadAziende()
+        self.clientiLbl.pack(pady=10)
         self.aziende = self.loadAziende()
         for widget in self.listWin.winfo_children():
             if isinstance(widget, Frame):  # elimina solo i Frame (che contengono Label e Button)
@@ -135,21 +194,60 @@ class SettingsUI():
         except Exception as e:
             print(f"Errore durante l'eliminazione: {e}")
 
-    def changeFrame(self, frame, btnOn, btnOff):
+
+    def deleteProd(self, prod, frame):
+        try:
+            conn = sqlite3.connect('database.db')
+            cur = conn.cursor()
+
+            cur.execute(f"SELECT id FROM prodotti WHERE prodotto = '{prod}'")
+
+            result = cur.fetchone()
+            if result:
+                idProd = result[0]
+
+            cur.execute("DELETE FROM prodotti WHERE id = ?", (idProd,))
+            conn.commit()
+
+            cur.close()
+            conn.close()
+
+            frame.destroy()
+
+            # Aggiorna self.aziende dopo l'eliminazione
+            self.prodotti = self.loadProdotti()
+            self.aggiornaAziende()
+
+            print(f"{prod} eliminato.")
+
+        except Exception as e:
+            print(f"Errore durante l'eliminazione: {e}")
+    
+
+    def changeFrame(self, frame, btnOn, btnOff, btOff):
         self.settWin.pack_forget()
         self.listWin.pack_forget()
+        self.prodWin.pack_forget()
         frame.pack()
         btnOff.config(bootstyle="primary")
+        btOff.config(bootstyle="primary")
         btnOn.config(bootstyle=SUCCESS)
         if frame == self.listWin:
             self.popolaLista()
+        elif frame == self.prodWin:
+            self.popolaArt()
 
 
-    def salvaSocieta(self):
-        nome_azienda = self.entry_nome.get()
-        if nome_azienda:
-            self.saveAziende(nome_azienda)
+
+    def salvaSocieta(self, id):
+        if id == 'cliente':
+            entry = self.entry_nome.get()
+        elif id == 'prodotto':
+            entry = self.entryProd.get()
+        if entry:
+            self.saveAziende(entry, id)
             self.entry_nome.delete(0, 'end')
+            self.entryProd.delete(0, 'end')
             self.aggiornaAziende()
         else:
             print("Inserisci un nome valido.")

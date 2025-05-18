@@ -1,13 +1,14 @@
 from impostazioni import SettingsUI
 
 import threading
-import RPi.GPIO as GPIO
+#import RPi.GPIO as GPIO
 import time
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.widgets import Combobox
 from ttkbootstrap.widgets import Checkbutton
 from ttkbootstrap.widgets import Label
+from ttkbootstrap.widgets import Button
 import json
 import sqlite3
 from reportlab.lib.pagesizes import A4
@@ -21,7 +22,8 @@ class UI():
         self.settingsUi = SettingsUI(self.root, self.aggiornaAziende)
         #self.counterClass = SwitchCounter(self.modDict)
         self.aziende = self.loadAziende()
-        self.articoli = ["Lenzuola", "CopriMaterasso", "Federa"]
+        self.articoli = self.loadProdotti()
+        #self.articoli = ["Lenzuola", "CopriMaterasso", "Federa"]
         #self.listButtons = []
         self.cbVars = []
         self.selAll = None
@@ -34,6 +36,8 @@ class UI():
         self.pins = [17,18]
         self.entrato = False
         self.pin_map = {}  # pin → (label, index)
+        self.frameList = []
+        self.fLabels = []
 
 
     def loadAziende(self):
@@ -41,6 +45,18 @@ class UI():
             conn = sqlite3.connect('database.db')
             cur = conn.cursor()
             cur.execute("SELECT cliente FROM clienti ORDER BY id ASC")
+            risultati = cur.fetchall()
+            conn.close()
+            return [r[0] for r in risultati]
+        except Exception as e:
+            print(f"Errore durante il caricamento delle aziende: {e}")
+            return []
+        
+    def loadProdotti(self):
+        try:
+            conn = sqlite3.connect('database.db')
+            cur = conn.cursor()
+            cur.execute("SELECT prodotto FROM prodotti ORDER BY id ASC")
             risultati = cur.fetchall()
             conn.close()
             return [r[0] for r in risultati]
@@ -61,7 +77,7 @@ class UI():
         toolbar = ttk.Frame(self.root, bootstyle="secondary")
         toolbar.pack(side=ttk.TOP, fill=ttk.X)
 
-        newBtn = ttk.Button(toolbar, text="Nuovo", bootstyle=PRIMARY, command = lambda : self.threadCounter())
+        newBtn = ttk.Button(toolbar, text="Boot", bootstyle=PRIMARY, command = lambda : self.sensBlocked(5))
         newBtn.pack(side=ttk.LEFT, padx=20, pady=5)
 
         saveBtn = ttk.Button(toolbar, text="Salva", bootstyle=SUCCESS, command = lambda: self.saveData())
@@ -76,12 +92,16 @@ class UI():
 
         style = ttk.Style()
         style.configure("Custom.TFrame", background="#2d2d2d")
+        style.configure("Red.TFrame", background="#8b0000")
+        style.configure("Red.TLabel", background="#8b0000", foreground="white")
         style.configure("title.TLabel", background = "#2d2d2d" ,foreground="orange")
         style.configure("lbl.TLabel", background = "#2d2d2d" ,foreground="white")
+        style.configure("lbl.TButton", background = "#2d2d2d" ,foreground="white")
+
 
 
         def creaBuche():
-            GPIO.setmode(GPIO.BCM)
+            #GPIO.setmode(GPIO.BCM)
             nList = ["Uno", "Due", "Tre", "Quattro", "Cinque", "Sei", "Sette", "Otto", "Nove", "Dieci"]
 
             for i in range(10):
@@ -105,21 +125,27 @@ class UI():
 
                 count = 0
                 countLbl = Label(frame, text=f"Count: {count}", style="lbl.TLabel")
-                countLbl.place(x=80, y=120)
+                countLbl.place(x=60, y=100)
+
+                stopBtn = Button(frame, text = "Stop", style="btn.TButton", command = self.stopBtnAction)
+
+                self.fLabels.append((bucaLbl, articoliLbl, countLbl, stopBtn))
+                self.frameList.append(frame)
+
 
                 self.artCombo.append(comboB)
                 self.counts.append(count)
 
                 if i < len(self.pins):
                     pin = self.pins[i]
-                    GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                    #GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
                     self.pin_map[pin] = (countLbl, i)
 
         creaBuche()
 
     def threadCounter(self):
-        GPIO.setup(27, GPIO.OUT)
-        self.pwm = GPIO.PWM(27, 1000)
+        #GPIO.setup(27, GPIO.OUT)
+        #self.pwm = GPIO.PWM(27, 1000)
         for pin in self.pin_map:
             thread = threading.Thread(target=self.counter, args=(pin,), daemon=True)
             thread.start()
@@ -138,40 +164,71 @@ class UI():
         label, idx = self.pin_map[pin]
         start_time = None
         allarme_attivato = False
-        stato_prec = GPIO.HIGH
+        #stato_prec = GPIO.HIGH
 
-        while True:
-            stato = GPIO.input(pin)
+        # while True:
+        #     #stato = GPIO.input(pin)
 
-            if stato == GPIO.LOW:
-                if stato_prec == GPIO.HIGH:
-                    # nuova attivazione
-                    start_time = time.time()
-                    allarme_attivato = False
+        #     if stato == GPIO.LOW:
+        #         if stato_prec == GPIO.HIGH:
+        #             # nuova attivazione
+        #             start_time = time.time()
+        #             allarme_attivato = False
 
-                elapsed = time.time() - start_time if start_time else 0
+        #         elapsed = time.time() - start_time if start_time else 0
 
-                if elapsed > 3 and not allarme_attivato:
-                    allarme_attivato = True
-                    threading.Thread(target=self.suona_allarme, daemon=True).start()
+        #         if elapsed > 3 and not allarme_attivato:
+        #             allarme_attivato = True
+        #             threading.Thread(target=self.suona_allarme, daemon=True).start()
 
-            elif stato == GPIO.HIGH and stato_prec == GPIO.LOW:
-                # rilascio: conta l'evento
-                self.counts[idx] += 1
-                count = self.counts[idx]
-                self.root.after(0, lambda l=label, c=count: l.config(text=f"Count: {c}"))
+        #     elif stato == GPIO.HIGH and stato_prec == GPIO.LOW:
+        #         # rilascio: conta l'evento
+        #         self.counts[idx] += 1
+        #         count = self.counts[idx]
+        #         self.root.after(0, lambda l=label, c=count: l.config(text=f"Count: {c}"))
 
-                # reset
-                start_time = None
-                allarme_attivato = False
+        #         # reset
+        #         start_time = None
+        #         allarme_attivato = False
 
-            stato_prec = stato
-            time.sleep(0.01)
+        #     stato_prec = stato
+        #     time.sleep(0.01)
 
 
-
+    def stopBtnAction(self):
+        self.stop = True
     
+    def sensBlocked(self, n):
+        self.stop = False
+        self.placed = False
+        def toggle_frame_style(i):
+            bLbl, artLbl, countLbl, stopBtn = self.fLabels[n]
+            if not self.placed:    
+                stopBtn.place(x=60, y=150)
+                self.placed = True
+            if i % 2 == 0:
+                self.frameList[n].config(style='Red.TFrame')
+                bLbl.config(style='Red.TLabel')
+                artLbl.config(style='Red.TLabel')
+                countLbl.config(style='Red.TLabel')
+            else:
+                self.frameList[n].config(style='Custom.TFrame')
+                bLbl.config(style='lbl.TLabel')
+                artLbl.config(style='lbl.TLabel')
+                countLbl.config(style='lbl.TLabel')
+            
+            if not self.stop:
+                self.root.after(300, toggle_frame_style, i + 1) 
+            else:
+                self.frameList[n].config(style='Custom.TFrame')
+                bLbl.config(style='lbl.TLabel')
+                artLbl.config(style='lbl.TLabel')
+                countLbl.config(style='lbl.TLabel')
+                stopBtn.place_forget()
+                self.placed = False
 
+
+        toggle_frame_style(0)
 
     def modDict(self, key, value):
         self.counterDict[key] += value
@@ -243,6 +300,13 @@ class UI():
         self.aziendaCB['values'] = self.aziende
         if self.aziende:
             self.aziendaCB.set(self.aziende[0])
+
+        self.articoli = self.loadProdotti()
+        for combo in self.artCombo:
+            combo['values'] = self.articoli
+            # if self.aziende:
+            #     self.aziendaCB.set(self.aziende[0])
+        
 
     def crea_pdf(self, nome_file, cliente, articoli):
         c = canvas.Canvas(nome_file, pagesize=A4)
