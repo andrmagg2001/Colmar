@@ -246,7 +246,7 @@ class UI():
             else:                  
                 self.artCount[articolo.get()] = self.counts[i]
 
-        print(self.artCount)
+        #print(self.artCount)
 
         if self.aziendaCB.get():
             cliente = self.aziendaCB.get()
@@ -297,6 +297,10 @@ class UI():
 
         cur.close()
         conn.close()
+
+        for i, (bucaLbl, articoliLbl, countLbl, stopBtn) in enumerate(self.fLabels):
+            self.counts[i] = 0
+            countLbl.config(text = f"Count: {self.counts[i]}")
 
 
     def aggiornaAziende(self):
