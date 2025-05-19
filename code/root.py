@@ -301,6 +301,7 @@ class UI():
         for i, (bucaLbl, articoliLbl, countLbl, stopBtn) in enumerate(self.fLabels):
             self.counts[i] = 0
             countLbl.config(text = f"Count: {self.counts[i]}")
+            
 
 
     def aggiornaAziende(self):
