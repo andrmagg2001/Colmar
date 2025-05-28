@@ -82,10 +82,6 @@ class SettingsUI():
         listProds = ttk.Button(toolbar, text="Lista Prodotti", bootstyle="primary", command = lambda: self.changeFrame(self.prodWin, listProds,listAzieSec, settSec))
         listProds.pack(side=ttk.LEFT, padx=0, pady=0)
 
-
-
-
-
         #************* SETTINGS WINDOW *************
 
         self.settWin = ttk.Frame(self.settingsWin)
@@ -110,13 +106,52 @@ class SettingsUI():
         saveProdbutton = ttk.Button(self.settWin, text="Aggiungi Prodotto", bootstyle=SUCCESS, command= lambda: self.salvaSocieta('prodotto'))
         saveProdbutton.pack(pady=20)
 
-
         #************ LISTA AZIENDE WINDOW ************
-
         self.listWin = ttk.Frame(self.settingsWin)
         self.listWin.pack(fill="both")
 
         self.clientiLbl = ttk.Label(self.listWin, text="CLIENTI:", font=("Helvetica", 12))
+
+        self.clSclContainer = ttk.Frame(self.listWin)
+        self.clCanvas = ttk.Canvas(self.clSclContainer)
+        self.clScrollBar = ttk.Scrollbar(self.clSclContainer, orient = 'vertical', command=self.clCanvas.yview)
+        self.clscrFrame = ttk.Frame(self.clCanvas)
+
+                
+        self.clscrFrame.bind(
+            '<Configure>',
+            lambda e: self.clCanvas.configure(
+                scrollregion=self.clCanvas.bbox('all')
+            )
+        )
+
+        def _on_mousew(event):
+            if event.num == 4:
+                self.clCanvas.yview_scroll(-1, 'units')
+            elif event.num == 5:
+                self.clCanvas.yview_scroll(1,'units')
+
+        def _bind_mousew(event):
+            self.clCanvas.bind_all('<Button-4>', _on_mousew)
+            self.artCanvas.bind_all('<Button-5>', _on_mousew)
+
+        def _unbind_mousew(event):
+            self.clCanvas.unbind_all('<Button-4>')
+            self.clCanvas.unbind_all('<Button-5>')
+
+        self.clCanvas.create_window((0, 0), window=self.clscrFrame, anchor='nw')
+        self.clCanvas.configure(yscrollcommand=self.clScrollBar.set)
+
+        self.clCanvas.bind('<Enter>', _bind_mousew)
+        self.clCanvas.bind('<Leave>', _unbind_mousew)
+
+        self.clientiLbl.pack(pady=10)
+        self.clSclContainer.pack(fill='both', expand = True)
+        self.clCanvas.pack(side= 'left', fill = 'both', expand=True, padx = 5)
+        self.clScrollBar.pack(side = 'right', fill = 'y')
+
+
+
 
         #*********** LISTA PRODOTTI WINDOW *************+
         
@@ -124,46 +159,82 @@ class SettingsUI():
         self.prodWin.pack(fill="both")
 
         self.articoliLbl = ttk.Label(self.prodWin, text="Articoli:", font=("Helvetica", 12))
-        
-        
+
+        self.artSclContainer = ttk.Frame(self.prodWin)
+        self.artCanvas = ttk.Canvas(self.artSclContainer)
+        self.artScrollBar = ttk.Scrollbar(self.artSclContainer, orient = 'vertical', command=self.artCanvas.yview)
+        self.scrFrame = ttk.Frame(self.artCanvas)
+
+                
+        self.scrFrame.bind(
+            '<Configure>',
+            lambda e: self.artCanvas.configure(
+                scrollregion=self.artCanvas.bbox('all')
+            )
+        )
+
+        def _on_mousew(event):
+            if event.num == 4:
+                self.artCanvas.yview_scroll(-1, 'units')
+            elif event.num == 5:
+                self.artCanvas.yview_scroll(1,'units')
+
+        def _bind_mousew(event):
+            self.artCanvas.bind_all('<Button-4>', _on_mousew)
+            self.artCanvas.bind_all('<Button-5>', _on_mousew)
+
+        def _unbind_mousew(event):
+            self.artCanvas.unbind_all('<Button-4>')
+            self.artCanvas.unbind_all('<Button-5>')
+
+        self.artCanvas.create_window((0, 0), window=self.scrFrame, anchor='nw')
+        self.artCanvas.configure(yscrollcommand=self.artScrollBar.set)
+
+        self.artCanvas.bind('<Enter>', _bind_mousew)
+        self.artCanvas.bind('<Leave>', _unbind_mousew)
+
+
+        self.articoliLbl.pack(side = 'top', pady=10)
+        self.artSclContainer.pack(fill='both', expand = True)
+        self.artCanvas.pack(side= 'left', fill = 'both', expand=True, padx = 5)
+        self.artScrollBar.pack(side = 'right', fill = 'y')
+       
     def popolaArt(self):
         self.prodotti = self.loadProdotti()
-        self.articoliLbl.pack(pady=10)
-        for widget in self.prodWin.winfo_children():
+        for widget in self.scrFrame.winfo_children():
             if isinstance(widget, Frame):  # elimina solo i Frame (che contengono Label e Button)
                 widget.destroy()
 
         for nome in self.prodotti:
-            frame = Frame(self.prodWin, borderwidth=2, relief="solid")
-            frame.pack(pady=0, padx=10, fill="both")
+            frame = Frame(self.scrFrame, borderwidth=2, relief="solid")
+            frame.pack(pady=2, padx=20, fill="both")
 
             lbl = Label(frame, text=nome, font=self.arial)
-            lbl.pack(side=ttk.LEFT, padx=50, pady=5)
+            lbl.pack(side=ttk.LEFT, padx=30, pady=5)
 
             deleteBtn = Button(frame, text="Delete", bootstyle="danger",
                             command=lambda articolo=nome, f=frame: self.deleteProd(articolo, f))
-            deleteBtn.pack(side=ttk.RIGHT, pady=5)
+            deleteBtn.pack(side=ttk.RIGHT, pady=5, padx = 50)
 
 
 
     def popolaLista(self):
         self.aziende = self.loadAziende()
-        self.clientiLbl.pack(pady=10)
         self.aziende = self.loadAziende()
-        for widget in self.listWin.winfo_children():
+        for widget in self.clscrFrame.winfo_children():
             if isinstance(widget, Frame):  # elimina solo i Frame (che contengono Label e Button)
                 widget.destroy()
 
         for nome in self.aziende:
-            frame = Frame(self.listWin, borderwidth=2, relief="solid")
-            frame.pack(pady=0, padx=10, fill="both")
+            frame = Frame(self.clscrFrame, borderwidth=2, relief="solid")
+            frame.pack(pady=2, padx=20, fill="both")
 
             lbl = Label(frame, text=nome, font=self.arial)
             lbl.pack(side=ttk.LEFT, padx=50, pady=5)
 
-            deleteBtn = Button(frame, text="Delete", bootstyle="danger",
+            deleteBtn = Button(frame, text="Elimina", bootstyle="danger",
                             command=lambda cliente=nome, f=frame: self.deleteAzienda(cliente, f))
-            deleteBtn.pack(side=ttk.RIGHT, pady=5)
+            deleteBtn.pack(side=ttk.RIGHT, pady=5,padx= 50)
 
             
 

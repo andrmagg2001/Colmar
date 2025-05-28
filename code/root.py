@@ -1,7 +1,7 @@
 from impostazioni import SettingsUI
 
 import threading
-import RPi.GPIO as GPIO
+#import RPi.GPIO as GPIO
 import time
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
@@ -76,7 +76,7 @@ class UI():
         toolbar = ttk.Frame(self.root, bootstyle="secondary")
         toolbar.pack(side=ttk.TOP, fill=ttk.X)
 
-        newBtn = ttk.Button(toolbar, text="Boot", bootstyle=PRIMARY, command = lambda : self.threadCounter())
+        newBtn = ttk.Button(toolbar, text="Inizia", bootstyle=PRIMARY, command = lambda : self.counter())
         newBtn.pack(side=ttk.LEFT, padx=20, pady=5)
 
         saveBtn = ttk.Button(toolbar, text="Salva", bootstyle=SUCCESS, command = lambda: self.saveData())
@@ -100,10 +100,11 @@ class UI():
 
 
         def creaBuche():
-            GPIO.setmode(GPIO.BCM)
-            nList = ["Uno", "Due", "Tre", "Quattro", "Cinque", "Sei", "Sette", "Otto", "Nove", "Dieci"]
+            #GPIO.setmode(GPIO.BCM)
+            #nList = ["Uno", "Due", "Tre", "Quattro", "Cinque", "Sei", "Sette", "Otto", "Nove", "Dieci"]
 
             for i in range(10):
+                titolo = self.articoli[i] if i < len(self.articoli) else 'N/D'
                 id = i + 1
                 colonna = i % 5
                 riga = i // 5
@@ -112,14 +113,14 @@ class UI():
                 frame = ttk.Frame(self.root, style="Custom.TFrame", borderwidth=2, relief="solid")
                 frame.place(x=x, y=y, width=200, height=200)
 
-                bucaLbl = ttk.Label(frame, text=f"Buca {nList[i]}", style="title.TLabel")
+                bucaLbl = ttk.Label(frame, text=f"Buca {titolo}", style="title.TLabel")
                 bucaLbl.place(x=5, y=5)
 
                 articoliLbl = Label(frame, text="Articolo: ", style="lbl.TLabel")
                 articoliLbl.place(x=5, y=45)
 
                 comboB = Combobox(frame, values=self.articoli, style="info", state="readonly")
-                comboB.set(self.articoli[0])
+                comboB.set(titolo)
                 comboB.place(x=60, y=40, height=30, width=130)
 
                 count = 0
@@ -135,10 +136,10 @@ class UI():
                 self.artCombo.append(comboB)
                 self.counts.append(count)
 
-                if i < len(self.pins):
-                    pin = self.pins[i]
-                    GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-                    self.pin_map[pin] = (countLbl, i)
+                # if i < len(self.pins):
+                #     pin = self.pins[i]
+                #     GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                #     self.pin_map[pin] = (countLbl, i)
 
         creaBuche()
 
