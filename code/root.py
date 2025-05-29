@@ -1,7 +1,7 @@
 from impostazioni import SettingsUI
 
 import threading
-#import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 import time
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
@@ -14,13 +14,14 @@ import sqlite3
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from datetime import datetime
+import os
+import sys
 
 
 class UI():
     def __init__(self):
         self.root = None
         self.settingsUi = SettingsUI(self.root, self.aggiornaAziende)
-        #self.counterClass = SwitchCounter(self.modDict)
         self.aziende = self.loadAziende()
         self.articoli = self.loadProdotti()
         self.listButtons = []
@@ -28,17 +29,18 @@ class UI():
         self.selAll = None
         self.aziendaCB = None
         self.artCount = {}
+        self.savedCounts = {}
+        self.oldVList = []
         self.artCombo = []
         self.counts = []
         self.counterDict = {}
         self.lblCount = {}
-        self.pins = [17,18,2,22]
+        self.pins = [21,2, 17,24,25,16, 4, 6]
         self.entrato = False
         self.pin_map = {}  # pin → (label, index)
         self.frameList = []
         self.fLabels = []
-
-
+    
     def loadAziende(self):
         try:
             conn = sqlite3.connect('database.db')
@@ -76,7 +78,7 @@ class UI():
         toolbar = ttk.Frame(self.root, bootstyle="secondary")
         toolbar.pack(side=ttk.TOP, fill=ttk.X)
 
-        newBtn = ttk.Button(toolbar, text="Inizia", bootstyle=PRIMARY, command = lambda : self.counter())
+        newBtn = ttk.Button(toolbar, text="Inizia", bootstyle=PRIMARY, command = lambda : self.threadCounter())
         newBtn.pack(side=ttk.LEFT, padx=20, pady=5)
 
         saveBtn = ttk.Button(toolbar, text="Salva", bootstyle=SUCCESS, command = lambda: self.saveData())
@@ -100,20 +102,22 @@ class UI():
 
 
         def creaBuche():
-            #GPIO.setmode(GPIO.BCM)
+            GPIO.setmode(GPIO.BCM)
             #nList = ["Uno", "Due", "Tre", "Quattro", "Cinque", "Sei", "Sette", "Otto", "Nove", "Dieci"]
 
-            for i in range(10):
+            for i in range(8):
                 titolo = self.articoli[i] if i < len(self.articoli) else 'N/D'
-                id = i + 1
-                colonna = i % 5
-                riga = i // 5
+                if i > 3:                  #DA TOGLIERE SE LA BUCA 4 VERRA USATA
+                    t = i - 1
+                    titolo = self.articoli[t] if t < len(self.articoli) else 'N/D'
+                colonna = i % 4
+                riga = i // 4
                 x = (200 * colonna) + (10 * colonna)
                 y = 50 + (riga * 200) + (20 * riga)
                 frame = ttk.Frame(self.root, style="Custom.TFrame", borderwidth=2, relief="solid")
                 frame.place(x=x, y=y, width=200, height=200)
 
-                bucaLbl = ttk.Label(frame, text=f"Buca {titolo}", style="title.TLabel")
+                bucaLbl = ttk.Label(frame, text="N/D" if i == 3 else titolo, style="title.TLabel")
                 bucaLbl.place(x=5, y=5)
 
                 articoliLbl = Label(frame, text="Articolo: ", style="lbl.TLabel")
@@ -122,6 +126,32 @@ class UI():
                 comboB = Combobox(frame, values=self.articoli, style="info", state="readonly")
                 comboB.set(titolo)
                 comboB.place(x=60, y=40, height=30, width=130)
+
+                oldVal = comboB.get()  # Inizializza old_value con il valore corrente
+
+                self.oldVList.append(oldVal)
+
+                def on_combobox_changed(event, i=i):
+                    old = self.oldVList[i]
+                    print(old)
+                    new = comboB.get()
+                    count = self.counts[i]
+
+                    # Salva count associato al vecchio articolo
+                    if old:
+                        if old in self.savedCounts:
+                            self.savedCounts[old] += count
+                        else:
+                            self.savedCounts[old] = count
+
+                    # Reset contatore e label
+                    self.counts[i] = 0
+                    self.fLabels[i][2].config(text=f"Count: 0")
+
+                    # Aggiorna old_value
+                    comboB.old_value = new
+
+                comboB.bind("<<ComboboxSelected>>", on_combobox_changed)
 
                 count = 0
                 countLbl = Label(frame, text=f"Count: {count}", style="lbl.TLabel")
@@ -135,11 +165,11 @@ class UI():
 
                 self.artCombo.append(comboB)
                 self.counts.append(count)
-
-                # if i < len(self.pins):
-                #     pin = self.pins[i]
-                #     GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-                #     self.pin_map[pin] = (countLbl, i)
+                
+                if i < len(self.pins):
+                    pin = self.pins[i]
+                    GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                    self.pin_map[pin] = (countLbl, i)
 
         creaBuche()
 
@@ -197,7 +227,7 @@ class UI():
                  allarme_attivato = False
 
              stato_prec = stato
-             time.sleep(0.01)
+             time.sleep(0.4)
 
 
     def stopBtnAction(self):
@@ -240,12 +270,19 @@ class UI():
 
     def saveData(self):
         self.artCount = {}
+        self.artCount = self.savedCounts.copy()
+
+        print(self.savedCounts)
+
         for i in range(len(self.artCombo)):
-            articolo = self.artCombo[i]
-            if articolo.get() in self.artCount:
-                self.artCount[articolo.get()] += self.counts[i]
-            else:                  
-                self.artCount[articolo.get()] = self.counts[i]
+            articolo = self.artCombo[i].get()
+            count = self.counts[i]
+            if count == 0:
+                continue
+            if articolo in self.artCount:
+                self.artCount[articolo] += count
+            else:
+                self.artCount[articolo] = count
 
         #print(self.artCount)
 
@@ -255,7 +292,7 @@ class UI():
         conn = sqlite3.connect('database.db')
         cur = conn.cursor()
 
-        #cur.execute("DELETE FROM relazione")
+        cur.execute("DELETE FROM relazione")
 
         cur.execute(f"SELECT id FROM clienti WHERE cliente = '{cliente}'")
 
@@ -290,10 +327,11 @@ class UI():
         print(artCliente)
 
         oggi = datetime.now()
-        data = f"{oggi.year}-{oggi.month}-{oggi.day}"
+        data = f"{oggi.year}{oggi.month}{oggi.day} - {oggi.hour}-{oggi.minute}"
 
         nomePDF = cliente + " " + data + ".pdf"
         self.crea_pdf(nomePDF, cliente, artCliente)
+        self.savedCounts.clear()
 
 
         cur.close()
@@ -330,6 +368,8 @@ class UI():
             y -= 20
 
         c.save()
+
+    
 
 
 if __name__ == '__main__':

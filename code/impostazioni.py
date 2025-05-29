@@ -7,6 +7,8 @@ from ttkbootstrap.widgets import Label
 from ttkbootstrap.widgets import Button
 import tkinter.font as tkFont
 import sqlite3
+import sys
+import os
 
 class SettingsUI():
     def __init__(self, root, aggiornaAziende):
@@ -15,6 +17,7 @@ class SettingsUI():
         self.settingsWin = None
         self.aziende = self.loadAziende()
         self.mapWidg = {}
+
 
     def saveAziende(self, what, id):
         conn = sqlite3.connect('database.db')
