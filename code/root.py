@@ -1,3 +1,4 @@
+#COMMENTO PROVA PULL ANDREA CULO
 from impostazioni import SettingsUI
 
 import threading
