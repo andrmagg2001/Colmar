@@ -1,5 +1,4 @@
-#COMMENTO PROVA PULL ANDREA CULO
-#COMMENTO PROVA 2 PIULL ANDREA CULO
+#ULTIMO COMMENTO ADNREA CULO
 from impostazioni import SettingsUI
 
 import threading
