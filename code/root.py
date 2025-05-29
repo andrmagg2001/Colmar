@@ -1,4 +1,3 @@
-#ULTIMO COMMENTO ADNREA CULO
 from impostazioni import SettingsUI
 
 import threading
