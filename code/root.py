@@ -227,7 +227,7 @@ class UI():
                  allarme_attivato = False
 
              stato_prec = stato
-             time.sleep(0.4)
+             time.sleep(0.2)
 
 
     def stopBtnAction(self):
