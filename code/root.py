@@ -191,43 +191,45 @@ class UI():
             print("Errore nel suono:", e)
 
     def counter(self, pin):
-        label, idx = self.pin_map[pin]
-        start_time = None
-        allarme_attivato = False
-        stato_prec = GPIO.LOW
+    label, idx = self.pin_map[pin]
+    start_time = None
+    allarme_attivato = False
+    stato_prec = GPIO.LOW
 
-        while True:
-             stato = GPIO.input(pin)
+    # Lista dei pin per cui fare il delay appena l'oggetto entra nel sensore
+    pins_con_delay = [21, 2, 25, 16]
 
-             if stato == GPIO.HIGH:
-                 if stato_prec == GPIO.LOW:
-                     # nuova attivazione
-                     start_time = None
-                     start_time = time.time()
-                     allarme_attivato = False
+    while True:
+        stato = GPIO.input(pin)
 
-                 if start_time is not None:
-                    elapsed = time.time() - start_time
-                 else:
-                    elapsed = 0
+        if stato == GPIO.HIGH:
+            if stato_prec == GPIO.LOW:
+                # Oggetto appena passato nel sensore (rising edge)
+                start_time = time.time()
+                allarme_attivato = False
 
-                 if elapsed > 3 and not allarme_attivato:
-                     allarme_attivato = True
-                     self.sensBlocked(idx)
-                     threading.Thread(target=self.suona_allarme, daemon=True).start()
+                # Delay immediato per i pin specificati
+                if pin in pins_con_delay:
+                    time.sleep(0.11)
 
-             elif stato == GPIO.LOW and stato_prec == GPIO.HIGH:
-                 # rilascio: conta l'evento
-                 self.counts[idx] += 1
-                 count = self.counts[idx]
-                 self.root.after(0, lambda l=label, c=count: l.config(text=f"Count: {c}"))
+            elapsed = time.time() - start_time if start_time else 0
 
-                 # reset
-                 start_time = None
-                 allarme_attivato = False
+            if elapsed > 3 and not allarme_attivato:
+                allarme_attivato = True
+                self.sensBlocked(idx)
+                threading.Thread(target=self.suona_allarme, daemon=True).start()
 
-             stato_prec = stato
-             time.sleep(0.09)
+        elif stato == GPIO.LOW and stato_prec == GPIO.HIGH:
+            # Oggetto uscito: conta
+            self.counts[idx] += 1
+            count = self.counts[idx]
+            self.root.after(0, lambda l=label, c=count: l.config(text=f"Count: {c}"))
+
+            start_time = None
+            allarme_attivato = False
+
+        stato_prec = stato
+        time.sleep(0.05)
 
 
     def stopBtnAction(self):
