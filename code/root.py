@@ -213,6 +213,9 @@ class UI():
                     if pin in pins_con_delay:
                         time.sleep(0.11)
 
+                    if pin == 17:
+                        time.sleep(0.06)
+
                 elapsed = time.time() - start_time if start_time else 0
 
                 if elapsed > 3 and not allarme_attivato:
@@ -230,7 +233,7 @@ class UI():
                 allarme_attivato = False
 
             stato_prec = stato
-            time.sleep(0.04)
+            time.sleep(0.02)
 
 
     def stopBtnAction(self):
