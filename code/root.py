@@ -335,8 +335,19 @@ class UI():
         oggi = datetime.now()
         data = f"{oggi.year}{oggi.month}{oggi.day} - {oggi.hour}-{oggi.minute}"
 
-        nomePDF = cliente + " " + data + ".pdf"
-        self.crea_pdf(nomePDF, cliente, artCliente)
+        # Crea il percorso della cartella del cliente
+        base_dir = os.path.expanduser("~/Desktop/Contate")
+        cliente_dir = os.path.join(base_dir, cliente)
+
+        # Crea la cartella se non esiste
+        os.makedirs(cliente_dir, exist_ok=True)
+
+        # Crea il percorso completo del PDF
+        nome_file_pdf = f"{cliente} {data}.pdf"
+        percorso_pdf = os.path.join(cliente_dir, nome_file_pdf)
+
+        # Crea il PDF
+        self.crea_pdf(percorso_pdf, cliente, artCliente)
         self.savedCounts.clear()
 
 
