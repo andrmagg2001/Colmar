@@ -43,6 +43,7 @@ class UI():
         self.frameList = []
         self.fLabels = []
         self.bloccato = False
+        pygame.mixer.init(frequency=44100, size=-16, channels=1)
         pygame.mixer.init()
 
     
