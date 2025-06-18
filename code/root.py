@@ -236,7 +236,7 @@ class UI():
                 if elapsed > 3 and not allarme_attivato:
                     allarme_attivato = True
                     self.sensBlocked(idx)
-                    threading.Thread(target=self.suona_allarme, daemon=True).start()
+                    threading.Thread(target=self.loop_suona_allarme, daemon=True).start()
 
             elif stato == GPIO.LOW and stato_prec == GPIO.HIGH:
                 # Oggetto uscito: conta
