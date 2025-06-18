@@ -43,7 +43,7 @@ class UI():
         self.frameList = []
         self.fLabels = []
         self.bloccato = False
-        pygame.mixer.init(frequency=44100, size=-16, channels=1)
+        pygame.mixer.init()
 
     
     def loadAziende(self):
@@ -198,12 +198,13 @@ class UI():
         sound = pygame.sndarray.make_sound(audio)
 
         sound.play()
-        pygame.time.wait(int(duration * 1000))
+        # Aspetta che il suono finisca prima di continuare
+        time.sleep(duration)
 
     def loop_suona_allarme(self):
         while not self.stop:
             self.suona_allarme()
-            time.sleep(1)
+            time.sleep(1) 
 
 
     def counter(self, pin):
