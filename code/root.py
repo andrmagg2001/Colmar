@@ -1,6 +1,7 @@
 from impostazioni import SettingsUI
 
-import simpleaudio as sa
+import pygame
+import numpy as np  # Assicurati di importare numpy
 import threading
 import RPi.GPIO as GPIO
 import time
@@ -42,6 +43,8 @@ class UI():
         self.frameList = []
         self.fLabels = []
         self.bloccato = False
+        pygame.mixer.init(frequency=44100, size=-16, channels=1)
+
     
     def loadAziende(self):
         try:
@@ -187,13 +190,15 @@ class UI():
        
 
     def suona_allarme(self, frequency=440, duration=0.3):
-        fs = 44100
-        t = np.linspace(0, duration, int(fs * duration), False)
-        note = np.sin(frequency * 2 * np.pi * t)
-        audio = note * (2**15 - 1) / np.max(np.abs(note))
-        audio = audio.astype(np.int16)
-        play_obj = sa.play_buffer(audio, 1, 2, fs)
-        play_obj.wait_done()
+        sample_rate = 44100
+        t = np.linspace(0, duration, int(sample_rate * duration), False)
+        wave = 0.5 * np.sin(2 * np.pi * frequency * t)
+
+        audio = (wave * 32767).astype(np.int16)
+        sound = pygame.sndarray.make_sound(audio)
+
+        sound.play()
+        pygame.time.wait(int(duration * 1000))
 
     def loop_suona_allarme(self):
         while not self.stop:
