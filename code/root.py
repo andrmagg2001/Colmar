@@ -189,7 +189,7 @@ class UI():
 
        
 
-    def suona_allarme(self, frequency=440, duration=0.3):
+    def suona_allarme(self, frequency=2000, duration=0.3):
         sample_rate = 44100
         t = np.linspace(0, duration, int(sample_rate * duration), False)
         wave = 0.5 * np.sin(2 * np.pi * frequency * t)
