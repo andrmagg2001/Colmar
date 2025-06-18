@@ -1,5 +1,6 @@
 from impostazioni import SettingsUI
 
+import simpleaudio as sa
 import threading
 import RPi.GPIO as GPIO
 import time
@@ -40,6 +41,7 @@ class UI():
         self.pin_map = {}  # pin → (label, index)
         self.frameList = []
         self.fLabels = []
+        self.bloccato = False
     
     def loadAziende(self):
         try:
@@ -182,13 +184,21 @@ class UI():
 
     
 
-    def suona_allarme(self):
-        try:
-            self.pwm.start(50)
-            time.sleep(5)
-            self.pwm.stop()
-        except Exception as e:
-            print("Errore nel suono:", e)
+       
+
+    def suona_allarme(self, frequency=440, duration=0.3):
+        fs = 44100
+        t = np.linspace(0, duration, int(fs * duration), False)
+        note = np.sin(frequency * 2 * np.pi * t)
+        audio = note * (2**15 - 1) / np.max(np.abs(note))
+        audio = audio.astype(np.int16)
+        play_obj = sa.play_buffer(audio, 1, 2, fs)
+        play_obj.wait_done()
+
+    def loop_suona_allarme(self):
+        while not self.stop:
+            self.suona_allarme()
+            time.sleep(1)
 
 
     def counter(self, pin):
