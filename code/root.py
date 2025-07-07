@@ -18,6 +18,8 @@ from reportlab.pdfgen import canvas
 from datetime import datetime
 import os
 import sys
+from tkinter import simpledialog
+
 
 
 class UI():
@@ -74,7 +76,7 @@ class UI():
     def BuildUi(self):
         self.root = ttk.Window(themename="darkly")
         self.root.title("Smistatore")
-        self.root.geometry("1100x500")
+        self.root.geometry("900x500")
         self.root.resizable(False, False)
         self.comboList = []
         self.selAll = ttk.BooleanVar(value=False)
@@ -160,7 +162,16 @@ class UI():
 
                 count = 0
                 countLbl = Label(frame, text=f"Count: {count}", style="lbl.TLabel")
-                countLbl.place(x=60, y=100)
+                countLbl.place(x=70, y=100)
+                def modifica_count(i=i, lbl=countLbl):
+                    nuovo_valore = simpledialog.askinteger("Modifica conteggio", "Inserisci nuovo valore per il conteggio:",
+                                                            parent=self.root, minvalue=0)
+                    if nuovo_valore is not None:
+                        self.counts[i] = nuovo_valore
+                        lbl.config(text=f"Count: {nuovo_valore}")
+
+                btnModifica = Button(frame, text="Modifica", style="btn.TButton", command=modifica_count)
+                btnModifica.place(x=60, y=130)  # Posizionato accanto al countLbl
 
                 stopBtn = Button(frame, text = "Stop", style="btn.TButton", command = self.stopBtnAction)
 
